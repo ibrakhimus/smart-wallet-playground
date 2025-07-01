@@ -6,13 +6,14 @@ import { SendUSDC } from '../../app/components/SendUSDC';
 import { AppPaymaster } from '../../app/components/AppPaymaster';
 import { SDKConfig } from '../../app/components/SDKConfig';
 import { EventLog } from '../../app/components/EventLog';
+import { SignTypedData } from '../../app/components/SignTypedData';
 
 export interface Feature {
   id: string;
   title: string;
   route: string;
   icon: string;
-  category: 'wallet' | 'config' | 'testing' | 'debugging';
+  category: 'wallet' | 'config' | 'testing' | 'debugging' | 'p0';
   component: ComponentType;
   enabled?: boolean;
   priority?: number; // For ordering within categories
@@ -59,6 +60,17 @@ export const FEATURES: Feature[] = [
     priority: 1,
   },
 
+  // P0 Calls
+  {
+    id: 'sign-typed-data',
+    title: 'EIP-712 Signing',
+    route: '/p0/sign-typed-data',
+    icon: '✍️',
+    category: 'p0',
+    component: SignTypedData,
+    priority: 1,
+  },
+
   // Debugging Tools
   {
     id: 'event-log',
@@ -76,7 +88,7 @@ export const getFeatureByRoute = (route: string): Feature | undefined => {
 };
 
 export const getNavigationStructure = () => {
-  const categories = ['config', 'wallet', 'debugging'] as const;
+  const categories = ['config', 'wallet', 'p0', 'debugging'] as const;
 
   return categories.map((category) => ({
     category,
@@ -96,6 +108,10 @@ export const CATEGORY_INFO = {
   config: {
     title: 'Configuration',
     icon: '⚙️',
+  },
+  p0: {
+    title: 'P0 Calls',
+    icon: '📝',
   },
   testing: {
     title: 'Testing Tools',
