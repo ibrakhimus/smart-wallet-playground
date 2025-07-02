@@ -6,6 +6,7 @@ import { serialize } from '@wagmi/core';
 import { useWallet } from '../context/WagmiContextProvider';
 import { useHydration } from '../hooks/useHydration';
 import { useConfig } from '../context/ConfigContext';
+import { Switch } from './Switch';
 
 const EIP712_TYPES = ['string', 'bytes', 'bytes32', 'uint256', 'uint8', 'int256', 'bool', 'address'] as const;
 
@@ -18,28 +19,28 @@ const generateRandomNonce = (): string => {
 
 type EIP712Type = (typeof EIP712_TYPES)[number];
 
-interface TypeField {
+type TypeField = {
   name: string;
   type: EIP712Type | string;
-}
+};
 
-interface CustomType {
+type CustomType = {
   name: string;
   fields: TypeField[];
-}
+};
 
-interface DomainConfig {
+type DomainConfig = {
   name?: string;
   version?: string;
   chainId?: number;
   verifyingContract?: `0x${string}`;
-}
+};
 
-interface MessageField {
+type MessageField = {
   key: string;
   value: string;
   type: EIP712Type | string;
-}
+};
 
 // EIP-3009 and Spend Permissions shortcuts
 const SHORTCUT_TEMPLATES = {
@@ -187,7 +188,6 @@ export function SignTypedData() {
     { key: 'contents', value: 'Hello, Bob!', type: 'string' },
   ]);
 
-  // State for UI mode
   const [mode, setMode] = useState<'builder' | 'json'>('builder');
   const [jsonInput, setJsonInput] = useState('');
   const [showAsString, setShowAsString] = useState(false);
@@ -533,7 +533,7 @@ export function SignTypedData() {
                 <div className="px-6 pb-6 border-t border-gray-700">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Name (synced with SDK)</label>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
                       <input
                         type="text"
                         value={domain.name || ''}
@@ -736,17 +736,13 @@ export function SignTypedData() {
             {/* Signing Option */}
             <div className="rounded-lg p-6">
               <div className="max-w-md mx-auto space-y-4">
-                <div className="flex items-center justify-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="showAsString"
+                <div className="flex items-center justify-center">
+                  <Switch
                     checked={showAsString}
-                    onChange={(e) => setShowAsString(e.target.checked)}
-                    className="rounded border-gray-600"
+                    onChange={setShowAsString}
+                    leftLabel="Structured Data"
+                    rightLabel="JSON String"
                   />
-                  <label htmlFor="showAsString" className="text-sm font-medium text-gray-300">
-                    Sign as JSON string (instead of structured data)
-                  </label>
                 </div>
 
                 <button
@@ -769,17 +765,13 @@ export function SignTypedData() {
                 placeholder="Paste your EIP-712 JSON configuration here..."
               />
               <div className="space-y-4 mt-4">
-                <div className="flex items-center justify-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="showAsStringJson"
+                <div className="flex items-center justify-center">
+                  <Switch
                     checked={showAsString}
-                    onChange={(e) => setShowAsString(e.target.checked)}
-                    className="rounded border-gray-600"
+                    onChange={setShowAsString}
+                    leftLabel="Structured Data"
+                    rightLabel="JSON String"
                   />
-                  <label htmlFor="showAsStringJson" className="text-sm font-medium text-gray-300">
-                    Sign as JSON string (instead of structured data)
-                  </label>
                 </div>
                 <div className="flex justify-center">
                   <button
