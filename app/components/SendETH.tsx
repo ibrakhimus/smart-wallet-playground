@@ -86,7 +86,7 @@ export function SendETH() {
       {displayIsConnected && (
         <div className="space-y-8">
           {/* Balance Display */}
-          <div className="text-white text-xl font-bold">
+          <div className="text-white text-md font-semibold">
             {isHydrated ? `Balance: ${parseFloat(ethBalance).toFixed(6)} ETH` : 'Loading...'}
           </div>
 
