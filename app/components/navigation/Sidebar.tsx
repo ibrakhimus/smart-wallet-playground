@@ -15,7 +15,7 @@ export function Sidebar() {
   return (
     <>
       <div
-        className={`bg-black border-r border-gray-700 transition-all duration-300 overflow-visible ${isCollapsed ? 'w-16' : 'w-16 lg:w-64'}`}
+        className={`bg-black border-r border-gray-700 transition-all duration-300 overflow-visible w-16 lg:w-64`}
       >
         {/* Sidebar Header */}
         <div className="flex items-center justify-between p-6">
