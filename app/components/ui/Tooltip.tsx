@@ -18,7 +18,7 @@ type TooltipOptions = {
 export function useTooltip(options: TooltipOptions = {}) {
   const { delay = 150, offset = 8 } = options;
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<number | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
