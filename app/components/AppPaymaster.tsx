@@ -2,6 +2,10 @@ import { useCallback, useState, useEffect, useMemo } from 'react';
 import { useChainId, useSendCalls, useAccount } from 'wagmi';
 import { useWallet } from '../context/WagmiContextProvider';
 import { useHydration } from '../hooks/useHydration';
+import { Button } from './ui/Button';
+import { ConnectWalletPrompt } from './ui/ConnectWalletPrompt';
+import { FeatureLayout } from './ui/FeatureLayout';
+import { Input } from './ui/Input';
 
 const PAYMASTER_SUPPORTED_CHAINS = {
   8453: 'Base',
@@ -50,7 +54,7 @@ export function AppPaymaster() {
     if (!displayIsConnected || !currentChainSupported) return;
 
     try {
-      const sponsorName = sponsor === '' ? 'Smart Wallet Playground' : sponsor;
+      const sponsorName = !sponsor ? 'Smart Wallet Playground' : sponsor;
       const paymasterUrl = `${document.location.origin}/api/paymaster/${encodeURIComponent(sponsorName)}`;
 
       addLog({
@@ -107,70 +111,40 @@ export function AppPaymaster() {
   const isButtonDisabled = !displayIsConnected || !currentChainSupported || isSendingCalls || !!callsId;
 
   return (
-    <div className="flex flex-col bg-slate-800 rounded-md p-4">
-      <h2 className="text-white mb-2 self-center">App Paymaster</h2>
+    <FeatureLayout showCard={false}>
+      {/* Connection Status */}
+      {!displayIsConnected && <ConnectWalletPrompt />}
 
-      <div className="flex flex-col space-y-4">
-        {/* Chain Status */}
-        {displayIsConnected && (
-          <div className={`text-sm text-center ${currentChainSupported ? 'text-green-400' : 'text-red-400'}`}>
-            {isHydrated
-              ? `Current Chain: ${PAYMASTER_SUPPORTED_CHAINS[displayCurrentChainId as keyof typeof PAYMASTER_SUPPORTED_CHAINS] || `Chain ${displayCurrentChainId}`}${!currentChainSupported ? ' (Not Supported)' : ''}`
-              : 'Loading...'}
+      {displayIsConnected && (
+        <div className="space-y-8">
+          {/* Sponsor Configuration */}
+          <div className="space-y-4">
+            <Input
+              label="Sponsor Name"
+              type="text"
+              value={sponsor}
+              onChange={(e) => setSponsor(e.target.value)}
+              placeholder="Smart Wallet Playground"
+              className="mt-2"
+            />
+            <p className="text-gray-400 text-xs">Used for paymaster service identification</p>
           </div>
-        )}
 
-        {/* Description */}
-        <p className="text-slate-400 text-sm text-center">
-          Send empty transaction (0 ETH to null address) sponsored by paymaster
-        </p>
+          {/* Send Button */}
+          <Button onClick={sendSponsoredTransaction} disabled={isButtonDisabled} fullWidth>
+            {getButtonText}
+          </Button>
 
-        {/* Sponsor Input */}
-        <div className="flex flex-col space-y-2">
-          <label className="text-white text-sm">Sponsor</label>
-          <input
-            type="text"
-            value={sponsor}
-            onChange={(e) => setSponsor(e.target.value)}
-            placeholder="Smart Wallet Playground"
-            className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white font-mono"
-          />
-          <p className="text-slate-400 text-xs">Used for paymaster service identification</p>
+          {/* Transaction Status */}
+          {callsId && (
+            <div className="space-y-2 p-4 bg-gray-900/50 rounded-2xl border border-gray-700">
+              <h4 className="text-white text-sm font-medium">Transaction Status</h4>
+              <div className="text-xs font-mono text-gray-300">Calls ID: {callsId}</div>
+              <div className="text-xs text-green-400">Status: Submitted</div>
+            </div>
+          )}
         </div>
-
-        <button
-          onClick={sendSponsoredTransaction}
-          disabled={isButtonDisabled}
-          className={`py-2 px-4 rounded-md border transition-colors ${
-            isButtonDisabled
-              ? 'bg-slate-600 text-slate-400 border-slate-500 cursor-not-allowed'
-              : 'bg-slate-700 text-white border-slate-600 hover:bg-slate-600 cursor-pointer'
-          }`}
-        >
-          {getButtonText}
-        </button>
-
-        {/* Transaction Status */}
-        {callsId && (
-          <div className="text-center space-y-1">
-            <div className="text-xs font-mono text-slate-300">Calls ID: {callsId}</div>
-            <div className="text-xs text-green-400">Status: Submitted</div>
-          </div>
-        )}
-
-        {/* Error Display */}
-        {sendCallsError && <div className="text-red-400 text-xs">Error: {sendCallsError.message}</div>}
-
-        {!displayIsConnected && (
-          <div className="text-slate-400 text-sm text-center">Connect wallet to test paymaster functionality</div>
-        )}
-
-        {displayIsConnected && !currentChainSupported && (
-          <div className="text-yellow-400 text-sm text-center">
-            Switch to a supported chain: {Object.values(PAYMASTER_SUPPORTED_CHAINS).join(', ')}
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </FeatureLayout>
   );
 }

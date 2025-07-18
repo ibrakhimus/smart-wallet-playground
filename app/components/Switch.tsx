@@ -1,10 +1,10 @@
-interface SwitchProps {
+type SwitchProps = {
   checked: boolean;
   onChange: (checked: boolean) => void;
   leftLabel?: string;
   rightLabel?: string;
   className?: string;
-}
+};
 
 export function Switch({ checked, onChange, leftLabel, rightLabel, className = '' }: SwitchProps) {
   return (
@@ -18,7 +18,7 @@ export function Switch({ checked, onChange, leftLabel, rightLabel, className = '
         onClick={() => onChange(!checked)}
         className={`${
           checked ? 'bg-blue-600' : 'bg-slate-700'
-        } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none border border-slate-600`}
+        } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none border border-slate-600 cursor-pointer`}
       >
         <span
           className={`${

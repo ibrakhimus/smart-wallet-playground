@@ -4,11 +4,11 @@ import { use } from 'react';
 import { notFound } from 'next/navigation';
 import { getFeatureByRoute } from '../../lib/features/registry';
 
-interface FeaturePageProps {
+type FeaturePageProps = {
   params: Promise<{
     feature: string[];
   }>;
-}
+};
 
 export default function FeaturePage({ params }: FeaturePageProps) {
   const resolvedParams = use(params);
@@ -26,11 +26,5 @@ export default function FeaturePage({ params }: FeaturePageProps) {
   // Dynamically render the component
   const FeatureComponent = feature.component;
 
-  return (
-    <div className="container mx-auto">
-      <div className="bg-slate-800 rounded-lg p-6">
-        <FeatureComponent />
-      </div>
-    </div>
-  );
+  return <FeatureComponent />;
 }
