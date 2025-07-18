@@ -5,7 +5,6 @@ import { WAGMIProvider } from './context/WagmiContextProvider';
 import { ConfigProvider } from './context/ConfigContext';
 import { GlobalHeader } from './components/global/GlobalHeader';
 
-
 export const metadata: Metadata = {
   title: 'Smart Wallet Playground',
   description: 'Smart Wallet Playground',
