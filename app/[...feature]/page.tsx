@@ -26,11 +26,5 @@ export default function FeaturePage({ params }: FeaturePageProps) {
   // Dynamically render the component
   const FeatureComponent = feature.component;
 
-  return (
-    <div className="container mx-auto">
-      <div className="bg-slate-800 rounded-lg p-6">
-        <FeatureComponent />
-      </div>
-    </div>
-  );
+  return <FeatureComponent />;
 }
