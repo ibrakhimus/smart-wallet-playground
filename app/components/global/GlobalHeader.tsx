@@ -128,7 +128,7 @@ export function GlobalHeader() {
             <button
               onClick={() => setShowChainDropdown(!showChainDropdown)}
               disabled={isSwitchingChain}
-              className={`flex items-center space-x-2 px-4 py-3 bg-gradient-to-br from-blue-950/80 to-gray-900 border-2 border-blue-800/60 rounded-2xl transition-all shadow-lg backdrop-blur-sm ${
+              className={`flex items-center space-x-2 px-6 py-3 bg-gradient-to-br from-blue-950/80 to-gray-900 border border-blue-800/60 rounded-2xl transition-all shadow-lg backdrop-blur-sm ${
                 isSwitchingChain
                   ? 'cursor-not-allowed opacity-75'
                   : 'cursor-pointer hover:from-blue-900/80 hover:to-gray-800 hover:border-blue-700/80 hover:scale-[1.02] hover:shadow-blue-500/20'
@@ -223,8 +223,8 @@ export function GlobalHeader() {
 
       {/* Toast notification for copied address */}
       {showCopiedToast && (
-        <div className="fixed top-20 right-6 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-2xl shadow-2xl z-50 transition-all font-semibold border border-green-400">
-          Address copied to clipboard!
+        <div className="fixed bottom-6 left-1/2 bg-blue-500 text-white px-6 py-3 rounded-2xl z-50 font-semibold border border-blue-400 animate-slide-up">
+          Address copied to clipboard
         </div>
       )}
 
