@@ -6,7 +6,11 @@ import { serialize } from '@wagmi/core';
 import { useWallet } from '../context/WagmiContextProvider';
 import { useHydration } from '../hooks/useHydration';
 import { useConfig } from '../context/ConfigContext';
-import { Switch } from './Switch';
+import { Switch } from './ui/Switch';
+import { Button } from './ui/Button';
+import { PillButton } from './ui/PillButton';
+import { Input } from './ui/Input';
+import { ConnectWalletPrompt } from './ui/ConnectWalletPrompt';
 
 const EIP712_TYPES = ['string', 'bytes', 'bytes32', 'uint256', 'uint8', 'int256', 'bool', 'address'] as const;
 
@@ -38,7 +42,7 @@ type DomainConfig = {
 
 type MessageField = {
   key: string;
-  value: string;
+  value: string | number;
   type: EIP712Type | string;
 };
 
@@ -131,12 +135,12 @@ const SHORTCUT_TEMPLATES = {
     messageFields: [
       { key: 'account', value: '0x0000000000000000000000000000000000000000', type: 'address' },
       { key: 'spender', value: '0xd8da6bf26964af9d7eed9e03e53415d37aa96045', type: 'address' },
-      { key: 'token', value: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', type: 'address' }, // USDC
+      { key: 'token', value: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', type: 'address' }, // USDC on Base
       { key: 'allowance', value: '1000000', type: 'uint160' },
-      { key: 'period', value: '86400', type: 'uint48' }, // 1 day in seconds
+      { key: 'period', value: 86400, type: 'uint48' }, // (1 day in seconds)
       { key: 'start', value: Math.floor(Date.now() / 1000), type: 'uint48' },
-      { key: 'end', value: Math.floor(Date.now() / 1000) + 86400 * 30, type: 'uint48' }, // 30 days from now
-      { key: 'salt', value: Math.floor(Math.random() * 1000000), type: 'uint256' },
+      { key: 'end', value: Math.floor(Date.now() / 1000) + 86400 * 30, type: 'uint48' }, // (30 days from now)
+      { key: 'salt', value: Math.floor(Math.random() * 1000000).toString(), type: 'uint256' },
       { key: 'extraData', value: '0x', type: 'bytes' },
     ],
   },
@@ -180,18 +184,13 @@ export function SignTypedData() {
 
   // State for message construction
   const [primaryType, setPrimaryType] = useState('Mail');
-  const [messageFields, setMessageFields] = useState<MessageField[]>([
-    { key: 'from.name', value: 'Alice', type: 'string' },
-    { key: 'from.wallet', value: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826', type: 'address' },
-    { key: 'to.name', value: 'Bob', type: 'string' },
-    { key: 'to.wallet', value: '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB', type: 'address' },
-    { key: 'contents', value: 'Hello, Bob!', type: 'string' },
-  ]);
+  const [messageFields, setMessageFields] = useState<MessageField[]>([]);
 
   const [mode, setMode] = useState<'builder' | 'json'>('builder');
   const [jsonInput, setJsonInput] = useState('');
   const [showAsString, setShowAsString] = useState(false);
   const [showDomainConfig, setShowDomainConfig] = useState(false);
+  const [showMessageConfig, setShowMessageConfig] = useState(false);
 
   // Sync domain with context changes (only if not using template-specific domain)
   useEffect(() => {
@@ -273,7 +272,7 @@ export function SignTypedData() {
         }
         return {
           ...field,
-          value: String(field.value),
+          value: field.value, // Keep original value format for EIP-712
         };
       });
 
@@ -283,7 +282,7 @@ export function SignTypedData() {
           name: 'Spend Permission Manager',
           version: '1',
           chainId: chainId,
-          verifyingContract: '0x0000000000000000000000000000000000000000', // Placeholder contract
+          verifyingContract: '0xf85210B21cC50302F477BA56686d2019dC9b67Ad', // Placeholder contract
         });
       } else if (templateName.startsWith('EIP-3009')) {
         setDomain({
@@ -473,327 +472,365 @@ export function SignTypedData() {
   }, [error, addLog]);
 
   return (
-    <div className="h-full text-white">
-      <div className="max-w-none mx-auto space-y-8 h-full">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold text-white">Custom EIP-712 Signing</h2>
-          <div className="flex bg-gray-800 rounded-lg p-1">
-            <button
-              onClick={() => setMode('builder')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                mode === 'builder' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-300 hover:text-white'
-              }`}
-            >
-              Form Builder
-            </button>
-            <button
-              onClick={() => setMode('json')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                mode === 'json' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-300 hover:text-white'
-              }`}
-            >
-              JSON Editor
-            </button>
-          </div>
-        </div>
+    <div className="h-full bg-black overflow-auto">
+      <div className="min-h-full flex flex-col justify-center">
+        <div className="max-w-7xl mx-auto px-6 pt-20 pb-8 w-full">
+          {/* Connection Status */}
+          {!displayIsConnected && <ConnectWalletPrompt />}
 
-        {!displayIsConnected && (
-          <div className="bg-yellow-900 border border-yellow-700 rounded-lg p-4">
-            <p className="text-yellow-200 text-sm">Connect your wallet to sign EIP-712 messages</p>
-          </div>
-        )}
+          {displayIsConnected && (
+            <div className="space-y-8">
+              {/* Mode Toggle */}
+              <div className="flex items-center justify-end">
+                <div className="flex bg-gray-800 rounded-lg p-1">
+                  <button
+                    onClick={() => setMode('builder')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      mode === 'builder' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-300 hover:text-white'
+                    }`}
+                  >
+                    Form Builder
+                  </button>
+                  <button
+                    onClick={() => setMode('json')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      mode === 'json' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-300 hover:text-white'
+                    }`}
+                  >
+                    JSON Editor
+                  </button>
+                </div>
+              </div>
 
-        {/* Shortcuts */}
-        <div className="p-2">
-          <div className="flex gap-3 flex-wrap">
-            {Object.keys(SHORTCUT_TEMPLATES).map((templateName) => (
-              <button
-                key={templateName}
-                onClick={() => loadShortcut(templateName as keyof typeof SHORTCUT_TEMPLATES)}
-                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
-              >
-                {templateName}
-              </button>
-            ))}
-          </div>
-        </div>
+              {/* Quick Templates */}
+              <div className="space-y-4">
+                <label className="text-white text-sm font-medium">Templates</label>
+                <div className="flex gap-2 flex-wrap mt-2">
+                  {Object.keys(SHORTCUT_TEMPLATES).map((templateName) => (
+                    <PillButton
+                      key={templateName}
+                      onClick={() => loadShortcut(templateName as keyof typeof SHORTCUT_TEMPLATES)}
+                    >
+                      {templateName}
+                    </PillButton>
+                  ))}
+                </div>
+              </div>
 
-        {mode === 'builder' ? (
-          <div className="space-y-8">
-            {/* Domain Configuration - Collapsible */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg">
-              <button
-                onClick={() => setShowDomainConfig(!showDomainConfig)}
-                className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-750 transition-colors"
-              >
-                <h3 className="text-lg font-semibold text-white">Domain Configuration</h3>
-                <span className="text-gray-400">{showDomainConfig ? '−' : '+'}</span>
-              </button>
-              {showDomainConfig && (
-                <div className="px-6 pb-6 border-t border-gray-700">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
-                      <input
-                        type="text"
-                        value={domain.name || ''}
-                        readOnly
-                        className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-300"
+              {mode === 'builder' ? (
+                <div className="space-y-12">
+                  {/* Domain Configuration */}
+                  <div className="space-y-6">
+                    <button
+                      onClick={() => setShowDomainConfig(!showDomainConfig)}
+                      className="flex items-center justify-between w-full text-left group cursor-pointer"
+                    >
+                      <h3 className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">
+                        Domain Configuration
+                      </h3>
+                      <span className="text-gray-400 text-xl group-hover:text-blue-400 transition-colors">
+                        {showDomainConfig ? '−' : '+'}
+                      </span>
+                    </button>
+
+                    {showDomainConfig && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Input
+                          label="Name"
+                          type="text"
+                          value={domain.name || ''}
+                          readOnly
+                          className="bg-gray-700 text-gray-300 px-3 py-2 text-sm"
+                        />
+                        <Input
+                          label="Version"
+                          type="text"
+                          value={domain.version || ''}
+                          onChange={(e) => setDomain((prev) => ({ ...prev, version: e.target.value }))}
+                          className="px-3 py-2 text-sm"
+                        />
+                        <Input
+                          label="Chain ID (synced with wallet)"
+                          type="number"
+                          value={domain.chainId || ''}
+                          readOnly
+                          className="bg-gray-700 text-gray-300 px-3 py-2 text-sm"
+                        />
+                        <Input
+                          label="Verifying Contract"
+                          type="text"
+                          value={domain.verifyingContract || ''}
+                          onChange={(e) =>
+                            setDomain((prev) => ({ ...prev, verifyingContract: e.target.value as `0x${string}` }))
+                          }
+                          placeholder="0x..."
+                          className="px-3 py-2 text-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Message Configuration */}
+                  <div className="space-y-6">
+                    <button
+                      onClick={() => setShowMessageConfig(!showMessageConfig)}
+                      className="flex items-center justify-between w-full text-left group cursor-pointer"
+                    >
+                      <h3 className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">
+                        Message Configuration
+                      </h3>
+                      <span className="text-gray-400 text-xl group-hover:text-blue-400 transition-colors">
+                        {showMessageConfig ? '−' : '+'}
+                      </span>
+                    </button>
+
+                    {showMessageConfig && (
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
+                        {/* Types Configuration */}
+                        <div className="space-y-8">
+                          {/* Custom Types */}
+                          <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-xl font-semibold text-white">Custom Types</h4>
+                              <button
+                                onClick={addCustomType}
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"
+                              >
+                                Add Type
+                              </button>
+                            </div>
+
+                            <div className="space-y-6 max-h-96 overflow-y-auto">
+                              {customTypes.map((customType, typeIndex) => (
+                                <div
+                                  key={typeIndex}
+                                  className="space-y-4 p-6 bg-gray-900/50 rounded-2xl border border-gray-700/50"
+                                >
+                                  <div className="flex items-center justify-between mb-3">
+                                    <Input
+                                      type="text"
+                                      value={customType.name}
+                                      onChange={(e) => updateCustomType(typeIndex, { name: e.target.value })}
+                                      className="text-sm bg-gray-800 font-medium px-3 py-1.5"
+                                      placeholder="Type name"
+                                    />
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => addFieldToType(typeIndex)}
+                                        className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                                      >
+                                        Add Field
+                                      </button>
+                                      <button
+                                        onClick={() => removeCustomType(typeIndex)}
+                                        className="text-xs px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors"
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-3">
+                                    {customType.fields.map((field, fieldIndex) => (
+                                      <div key={fieldIndex} className="flex items-center gap-3">
+                                        <div className="flex-1">
+                                          <Input
+                                            type="text"
+                                            value={field.name}
+                                            onChange={(e) =>
+                                              updateTypeField(typeIndex, fieldIndex, { name: e.target.value })
+                                            }
+                                            placeholder="Field name"
+                                            className="text-sm px-3 py-1.5"
+                                          />
+                                        </div>
+                                        <select
+                                          value={field.type}
+                                          onChange={(e) =>
+                                            updateTypeField(typeIndex, fieldIndex, { type: e.target.value })
+                                          }
+                                          className="px-2 py-1.5 text-xs border border-gray-600 rounded-md bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all min-w-[100px]"
+                                        >
+                                          {EIP712_TYPES.map((type) => (
+                                            <option key={type} value={type}>
+                                              {type}
+                                            </option>
+                                          ))}
+                                          {customTypes.map((ct) => (
+                                            <option key={ct.name} value={ct.name}>
+                                              {ct.name}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        <button
+                                          onClick={() => removeFieldFromType(typeIndex, fieldIndex)}
+                                          className="text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 rounded px-2 py-1 transition-colors text-xs"
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Message Construction */}
+                        <div className="space-y-8">
+                          {/* Primary Type */}
+                          <div className="space-y-4">
+                            <h4 className="text-xl font-semibold text-white">Primary Type</h4>
+                            <select
+                              value={primaryType}
+                              onChange={(e) => setPrimaryType(e.target.value)}
+                              className="w-full px-3 py-1.5 border border-gray-600 rounded-xl bg-black text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            >
+                              {customTypes.map((type) => (
+                                <option key={type.name} value={type.name}>
+                                  {type.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Message Fields */}
+                          <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-xl font-semibold text-white">Message Data</h4>
+                              <button
+                                onClick={addMessageField}
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"
+                              >
+                                Add Field
+                              </button>
+                            </div>
+
+                            <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
+                              {messageFields.map((field, index) => (
+                                <div key={index} className="flex items-center gap-3">
+                                  <div className="flex-1">
+                                    <Input
+                                      type="text"
+                                      value={field.key}
+                                      onChange={(e) => updateMessageField(index, { key: e.target.value })}
+                                      placeholder="Field path (e.g., from.name)"
+                                      className="text-sm px-3 py-1.5"
+                                    />
+                                  </div>
+                                  <div className="flex-1">
+                                    <Input
+                                      type="text"
+                                      value={field.value}
+                                      onChange={(e) => updateMessageField(index, { value: e.target.value })}
+                                      placeholder="Value"
+                                      className="text-sm px-3 py-1.5"
+                                    />
+                                  </div>
+                                  <select
+                                    value={field.type}
+                                    onChange={(e) => updateMessageField(index, { type: e.target.value })}
+                                    className="px-2 py-1.5 text-xs border border-gray-600 rounded-md bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all min-w-[100px]"
+                                  >
+                                    {EIP712_TYPES.map((type) => (
+                                      <option key={type} value={type}>
+                                        {type}
+                                      </option>
+                                    ))}
+                                    {customTypes.map((ct) => (
+                                      <option key={ct.name} value={ct.name}>
+                                        {ct.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={() => removeMessageField(index)}
+                                    className="text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 rounded px-2 py-1 flex-shrink-0 transition-colors text-xs"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Signing Options */}
+                  <div className="space-y-8">
+                    <div className="flex items-center justify-center">
+                      <Switch
+                        checked={showAsString}
+                        onChange={setShowAsString}
+                        leftLabel="Structured Data"
+                        rightLabel="JSON String"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Version</label>
-                      <input
-                        type="text"
-                        value={domain.version || ''}
-                        onChange={(e) => setDomain((prev) => ({ ...prev, version: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-800 text-white"
+
+                    <div className="flex justify-center">
+                      <Button
+                        onClick={handleBuilderSubmit}
+                        disabled={isPending || !displayIsConnected}
+                        isLoading={isPending}
+                        loadingText="Signing..."
+                        fullWidth
+                      >
+                        Sign Typed Data
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <label className="text-white text-sm font-medium">EIP-712 JSON Configuration</label>
+                    <textarea
+                      value={jsonInput || jsonPreview}
+                      onChange={(e) => setJsonInput(e.target.value)}
+                      className="w-full h-96 p-4 bg-black border border-gray-700 rounded-2xl text-green-400 placeholder-gray-500 font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
+                      placeholder="Paste your EIP-712 JSON configuration here..."
+                    />
+                  </div>
+
+                  {/* Signing Options */}
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-center">
+                      <Switch
+                        checked={showAsString}
+                        onChange={setShowAsString}
+                        leftLabel="Structured Data"
+                        rightLabel="JSON String"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Chain ID (synced with wallet)
-                      </label>
-                      <input
-                        type="number"
-                        value={domain.chainId || ''}
-                        readOnly
-                        className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-300"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Verifying Contract</label>
-                      <input
-                        type="text"
-                        value={domain.verifyingContract || ''}
-                        onChange={(e) =>
-                          setDomain((prev) => ({ ...prev, verifyingContract: e.target.value as `0x${string}` }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-800 text-white"
-                        placeholder="0x..."
-                      />
+
+                    <div className="flex justify-center">
+                      <Button
+                        onClick={handleJsonSubmit}
+                        disabled={isPending || !displayIsConnected}
+                        isLoading={isPending}
+                        loadingText="Signing..."
+                        fullWidth
+                      >
+                        Sign JSON Data
+                      </Button>
                     </div>
                   </div>
                 </div>
               )}
+
+              {/* Results */}
+              {signature && (
+                <div className="bg-green-900 border border-green-700 rounded-lg p-4">
+                  <h3 className="font-medium text-green-100 mb-2">Signature Generated</h3>
+                  <p className="text-sm text-green-200 font-mono break-all">{signature}</p>
+                </div>
+              )}
             </div>
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              {/* Types Configuration */}
-              <div className="space-y-6">
-                {/* Custom Types */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">Custom Types</h3>
-                    <button onClick={addCustomType} className="px-3 py-1 bg-green-600 text-white text-sm rounded-md">
-                      Add Type
-                    </button>
-                  </div>
-
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {customTypes.map((customType, typeIndex) => (
-                      <div key={typeIndex} className="bg-gray-700 rounded-md p-4 border border-gray-600">
-                        <div className="flex items-center justify-between mb-3">
-                          <input
-                            type="text"
-                            value={customType.name}
-                            onChange={(e) => updateCustomType(typeIndex, { name: e.target.value })}
-                            className="font-medium text-sm border border-gray-600 bg-gray-800 text-white rounded px-2 py-1 focus:outline-none"
-                          />
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => addFieldToType(typeIndex)}
-                              className="text-xs px-2 py-1 bg-green-600 text-white rounded border border-green-500"
-                            >
-                              Add Field
-                            </button>
-                            <button
-                              onClick={() => removeCustomType(typeIndex)}
-                              className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 border border-red-500"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          {customType.fields.map((field, fieldIndex) => (
-                            <div key={fieldIndex} className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={field.name}
-                                onChange={(e) => updateTypeField(typeIndex, fieldIndex, { name: e.target.value })}
-                                placeholder="Field name"
-                                className="flex-1 px-2 py-1 text-sm border border-gray-600 rounded bg-gray-800 text-white focus:outline-none"
-                              />
-                              <select
-                                value={field.type}
-                                onChange={(e) => updateTypeField(typeIndex, fieldIndex, { type: e.target.value })}
-                                className="px-2 py-1 text-sm border border-gray-600 rounded bg-gray-800 text-white focus:outline-none"
-                              >
-                                {EIP712_TYPES.map((type) => (
-                                  <option key={type} value={type}>
-                                    {type}
-                                  </option>
-                                ))}
-                                {customTypes.map((ct) => (
-                                  <option key={ct.name} value={ct.name}>
-                                    {ct.name}
-                                  </option>
-                                ))}
-                              </select>
-                              <button
-                                onClick={() => removeFieldFromType(typeIndex, fieldIndex)}
-                                className="text-red-400 hover:text-red-300 text-sm border border-red-500 rounded px-1"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/*Message Construction */}
-              <div className="space-y-6">
-                {/* Primary Type */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Primary Type</h3>
-                  <select
-                    value={primaryType}
-                    onChange={(e) => setPrimaryType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none"
-                  >
-                    {customTypes.map((type) => (
-                      <option key={type.name} value={type.name}>
-                        {type.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Message Fields */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">Message Data</h3>
-                    <button
-                      onClick={addMessageField}
-                      className="px-3 py-1 bg-green-600 text-white text-sm rounded-md border border-green-500"
-                    >
-                      Add Field
-                    </button>
-                  </div>
-
-                  <div className="space-y-3 max-h-64 overflow-y-auto pr-6">
-                    {messageFields.map((field, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <input
-                          type="text"
-                          value={field.key}
-                          onChange={(e) => updateMessageField(index, { key: e.target.value })}
-                          placeholder="Field path (e.g., from.name)"
-                          className="flex-1 px-3 py-2 text-sm border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none"
-                        />
-                        <input
-                          type="text"
-                          value={field.value}
-                          onChange={(e) => updateMessageField(index, { value: e.target.value })}
-                          placeholder="Value"
-                          className="flex-1 px-3 py-2 text-sm border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none"
-                        />
-                        <select
-                          value={field.type}
-                          onChange={(e) => updateMessageField(index, { type: e.target.value })}
-                          className="px-2 py-2 text-sm border border-gray-600 rounded-md bg-gray-700 text-white focus:outline-none"
-                        >
-                          {EIP712_TYPES.map((type) => (
-                            <option key={type} value={type}>
-                              {type}
-                            </option>
-                          ))}
-                          {customTypes.map((ct) => (
-                            <option key={ct.name} value={ct.name}>
-                              {ct.name}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => removeMessageField(index)}
-                          className="text-red-400 hover:text-red-300 border border-red-500 rounded px-1 flex-shrink-0"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Signing Option */}
-            <div className="rounded-lg p-6">
-              <div className="max-w-md mx-auto space-y-4">
-                <div className="flex items-center justify-center">
-                  <Switch
-                    checked={showAsString}
-                    onChange={setShowAsString}
-                    leftLabel="Structured Data"
-                    rightLabel="JSON String"
-                  />
-                </div>
-
-                <button
-                  onClick={handleBuilderSubmit}
-                  disabled={isPending || !displayIsConnected}
-                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                >
-                  {isPending ? 'Signing...' : !displayIsConnected ? 'Connect Wallet' : 'Sign Typed Data'}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="rounded-lg p-6">
-              <textarea
-                value={jsonInput || jsonPreview}
-                onChange={(e) => setJsonInput(e.target.value)}
-                className="w-full h-96 px-4 py-3 border border-gray-600 rounded-md font-mono text-sm bg-gray-900 text-green-400 resize-none focus:outline-none"
-                placeholder="Paste your EIP-712 JSON configuration here..."
-              />
-              <div className="space-y-4 mt-4">
-                <div className="flex items-center justify-center">
-                  <Switch
-                    checked={showAsString}
-                    onChange={setShowAsString}
-                    leftLabel="Structured Data"
-                    rightLabel="JSON String"
-                  />
-                </div>
-                <div className="flex justify-center">
-                  <button
-                    onClick={handleJsonSubmit}
-                    disabled={isPending || !displayIsConnected}
-                    className="bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                  >
-                    {isPending ? 'Signing...' : !displayIsConnected ? 'Connect Wallet' : 'Sign JSON Data'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Results */}
-        {signature && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h3 className="font-medium text-green-900 mb-2">Signature Generated</h3>
-            <p className="text-sm text-green-700 font-mono break-all">{signature}</p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
