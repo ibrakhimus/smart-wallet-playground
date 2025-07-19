@@ -10,6 +10,7 @@ import {
   Cog,
   Bug,
   TestTube,
+  FileCode,
 } from 'lucide-react';
 
 // Import all feature components
@@ -18,8 +19,8 @@ import { SendUSDC } from '../../app/components/SendUSDC';
 import { AppPaymaster } from '../../app/components/AppPaymaster';
 import { SDKConfig } from '../../app/components/SDKConfig';
 import { EventLog } from '../../app/components/EventLog';
+import { PersonalSign } from '../../app/components/PersonalSign';
 import { SignTypedData } from '../../app/components/SignTypedData';
-import { P0Calls } from '../../app/components/P0Calls';
 
 export type Feature = {
   id: string;
@@ -53,13 +54,22 @@ export const FEATURES: Feature[] = [
     priority: 2,
   },
   {
-    id: 'p0-calls',
-    title: 'P0 Calls',
-    route: '/wallet/p0-calls',
+    id: 'personal-sign',
+    title: 'Personal Sign',
+    route: '/wallet/personal-sign',
     icon: PenTool,
     category: 'wallet',
-    component: P0Calls,
+    component: PersonalSign,
     priority: 3,
+  },
+  {
+    id: 'sign-typed-data',
+    title: 'Sign Typed Data',
+    route: '/wallet/sign-typed-data',
+    icon: FileCode,
+    category: 'wallet',
+    component: SignTypedData,
+    priority: 4,
   },
   {
     id: 'app-paymaster',
@@ -68,7 +78,7 @@ export const FEATURES: Feature[] = [
     icon: Ticket,
     category: 'wallet',
     component: AppPaymaster,
-    priority: 4,
+    priority: 5,
   },
 
   // Configuration
@@ -79,17 +89,6 @@ export const FEATURES: Feature[] = [
     icon: Settings,
     category: 'config',
     component: SDKConfig,
-    priority: 1,
-  },
-
-  // P0 Calls
-  {
-    id: 'sign-typed-data',
-    title: 'EIP-712 Signing',
-    route: '/p0/sign-typed-data',
-    icon: '✍️',
-    category: 'p0',
-    component: SignTypedData,
     priority: 1,
   },
 
@@ -110,7 +109,7 @@ export const getFeatureByRoute = (route: string): Feature | undefined => {
 };
 
 export const getNavigationStructure = () => {
-  const categories = ['config', 'wallet', 'p0', 'debugging'] as const;
+  const categories = ['config', 'wallet', 'debugging'] as const;
 
   return categories.map((category) => ({
     category,
