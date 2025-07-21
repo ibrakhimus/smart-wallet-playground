@@ -1,16 +1,5 @@
 import { ComponentType } from 'react';
-import {
-  Wallet,
-  DollarSign,
-  PenTool,
-  Ticket,
-  Settings,
-  ClipboardList,
-  WalletCards,
-  Cog,
-  Bug,
-  TestTube,
-} from 'lucide-react';
+import { Wallet, DollarSign, Ticket, Settings, ClipboardList, WalletCards, Cog, Bug, TestTube } from 'lucide-react';
 
 // Import all feature components
 import { SendETH } from '../../app/components/SendETH';
