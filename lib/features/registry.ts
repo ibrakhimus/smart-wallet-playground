@@ -18,7 +18,6 @@ import { SendUSDC } from '../../app/components/SendUSDC';
 import { AppPaymaster } from '../../app/components/AppPaymaster';
 import { SDKConfig } from '../../app/components/SDKConfig';
 import { EventLog } from '../../app/components/EventLog';
-import { P0Calls } from '../../app/components/P0Calls';
 
 export type Feature = {
   id: string;
@@ -50,15 +49,6 @@ export const FEATURES: Feature[] = [
     category: 'wallet',
     component: SendUSDC,
     priority: 2,
-  },
-  {
-    id: 'p0-calls',
-    title: 'P0 Calls',
-    route: '/wallet/p0-calls',
-    icon: PenTool,
-    category: 'wallet',
-    component: P0Calls,
-    priority: 3,
   },
   {
     id: 'app-paymaster',
