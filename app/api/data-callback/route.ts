@@ -78,17 +78,13 @@ type SuccessResponse = {
 };
 
 export async function POST(request: Request): Promise<Response> {
-  console.log('📨 Data callback request received');
-
   try {
     const requestData: CallbackRequest = await request.json();
-    console.log('📋 Request data:', JSON.stringify(requestData, null, 2));
 
     // Extract requested info from the structure defined in docs
     const { requestedInfo } = requestData.capabilities.dataCallback;
 
     if (!requestedInfo) {
-      console.log('⚠️ No requestedInfo found');
       // Return success with original data if no requestedInfo
       const response: SuccessResponse = {
         calls: requestData.calls,
@@ -98,14 +94,6 @@ export async function POST(request: Request): Promise<Response> {
       };
       return Response.json(response);
     }
-
-    console.log('📋 RequestedInfo structure:', {
-      email: requestedInfo.email || 'not provided',
-      phoneNumber: requestedInfo.phoneNumber ? 'provided' : 'not provided',
-      physicalAddress: requestedInfo.physicalAddress ? 'provided' : 'not provided',
-      name: requestedInfo.name ? 'provided' : 'not provided',
-      onchainAddress: requestedInfo.onchainAddress || 'not provided',
-    });
 
     // Validation logic following the docs example
     const errors: ErrorResponse['errors'] = {};
@@ -142,13 +130,11 @@ export async function POST(request: Request): Promise<Response> {
 
     // Return errors if any found
     if (Object.keys(errors).length > 0) {
-      console.log('⚠️ Validation errors found:', errors);
       const errorResponse: ErrorResponse = { errors };
       return Response.json(errorResponse);
     }
 
     // Success - return original calls (must include dataCallback capability)
-    console.log('✅ Validation successful');
     const successResponse: SuccessResponse = {
       calls: requestData.calls,
       chainId: requestData.chainId,
@@ -156,10 +142,8 @@ export async function POST(request: Request): Promise<Response> {
       capabilities: requestData.capabilities,
     };
 
-    console.log('📤 Success response:', JSON.stringify(successResponse, null, 2));
     return Response.json(successResponse);
-  } catch (error) {
-    console.error('❌ Data callback error:', error);
+  } catch {
     const errorResponse: ErrorResponse = {
       errors: { server: 'Server error validating data' },
     };
