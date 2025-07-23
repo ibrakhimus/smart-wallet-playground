@@ -253,10 +253,10 @@ export function DataCallback() {
         params: sendCallsParams,
       });
 
-      setCallsId(String(response));
+      setCallsId(JSON.stringify(response));
       addLog({
         type: 'message',
-        data: `Transaction submitted successfully! Response: ${response}`,
+        data: `Transaction submitted successfully! Response: ${JSON.stringify(response, null, 2)}`,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -275,7 +275,7 @@ export function DataCallback() {
     if (callsId) {
       addLog({
         type: 'message',
-        data: `Data callback transaction initiated with ID: ${callsId}`,
+        data: `Data callback transaction initiated with response: ${callsId}`,
       });
     }
   }, [callsId, addLog]);
