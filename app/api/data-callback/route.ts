@@ -1,4 +1,3 @@
-// TypeScript types based on the documentation
 type RequestedInfo = {
   email?: string;
   phoneNumber?: {
@@ -81,7 +80,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const requestData: CallbackRequest = await request.json();
 
-    // Extract requested info from the structure defined in docs
+    // Extract requested info from the structure
     const { requestedInfo } = requestData.capabilities.dataCallback;
 
     if (!requestedInfo) {
@@ -95,7 +94,7 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json(response);
     }
 
-    // Validation logic following the docs example
+    // Validation logic
     const errors: ErrorResponse['errors'] = {};
 
     // Validate email
