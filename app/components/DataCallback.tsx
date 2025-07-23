@@ -10,6 +10,19 @@ import { FeatureLayout } from './ui/FeatureLayout';
 import { Switch } from './ui/Switch';
 import { useWallet } from '../context/WagmiContextProvider';
 
+// TypeScript types following the documentation exactly
+type DataCallbackType = 'email' | 'phoneNumber' | 'physicalAddress' | 'name' | 'onchainAddress';
+
+type DataCallbackRequestType = {
+  optional?: boolean;
+  type: DataCallbackType;
+};
+
+type DataCallbackCapability = {
+  requests: DataCallbackRequestType[];
+  callbackURL?: string;
+};
+
 const TEST_CASES = [
   {
     id: 1,
@@ -170,8 +183,9 @@ export function DataCallback() {
     setSendCallsError(null);
 
     try {
-      const requests = activeRequests.map((field) => ({
-        type: field as 'email' | 'phoneNumber' | 'physicalAddress' | 'name' | 'onchainAddress',
+      // Build requests following the documentation format exactly
+      const requests: DataCallbackRequestType[] = activeRequests.map((field) => ({
+        type: field as DataCallbackType,
         optional: dataOptional[field as keyof DataOptional],
       }));
 
@@ -184,13 +198,20 @@ export function DataCallback() {
         data: `Submitting transaction with data callback requests: ${requests.map((r) => `${r.type}${r.optional ? ' (optional)' : ''}`).join(', ')}`,
       });
 
-      if (callbackEnabled) {
+      if (callbackEnabled && callbackURL) {
         addLog({
           type: 'message',
           data: `Using callback URL: ${callbackURL}`,
         });
       }
 
+      // Build dataCallback capability following docs format
+      const dataCallbackCapability: DataCallbackCapability = {
+        requests,
+        ...(callbackEnabled && callbackURL && { callbackURL }),
+      };
+
+      // wallet_sendCalls params following docs format exactly
       const sendCallsParams = [
         {
           version: '1.0',
@@ -216,13 +237,15 @@ export function DataCallback() {
             },
           ],
           capabilities: {
-            dataCallback: {
-              requests,
-              callbackURL,
-            },
+            dataCallback: dataCallbackCapability,
           },
         },
       ];
+
+      addLog({
+        type: 'message',
+        data: `Sending wallet_sendCalls with capabilities: ${JSON.stringify(dataCallbackCapability, null, 2)}`,
+      });
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response = await (walletClient as any)?.request({
@@ -233,7 +256,7 @@ export function DataCallback() {
       setCallsId(String(response));
       addLog({
         type: 'message',
-        data: `Transaction submitted successfully! User data will be processed via callback API.`,
+        data: `Transaction submitted successfully! Response: ${response}`,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

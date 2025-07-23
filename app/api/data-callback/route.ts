@@ -1,70 +1,114 @@
-// Add CORS headers for external requests from Base Pay
-function addCorsHeaders(response: Response) {
-  response.headers.set('Access-Control-Allow-Origin', '*');
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  return response;
-}
+// TypeScript types based on the documentation
+type RequestedInfo = {
+  email?: string;
+  phoneNumber?: {
+    number: string;
+    country: string;
+    isPrimary: boolean;
+  };
+  physicalAddress?: {
+    address1: string;
+    address2?: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    countryCode: string;
+    name?: {
+      firstName: string;
+      familyName: string;
+    };
+  };
+  isPrimary?: boolean;
+  name?: {
+    firstName: string;
+    familyName: string;
+  };
+  onchainAddress?: string;
+};
 
-// Handle preflight OPTIONS requests
-export async function OPTIONS() {
-  const response = new Response(null, { status: 200 });
-  return addCorsHeaders(response);
-}
+type CallbackRequest = {
+  calls: {
+    to: string;
+    data: string;
+  }[];
+  chainId: string;
+  version: string;
+  capabilities: {
+    dataCallback: {
+      requestedInfo: RequestedInfo;
+    };
+  };
+};
 
-export async function POST(request: Request) {
-  console.log('📨 Received data callback request from Coinbase');
-  console.log('📍 Request URL:', request.url);
-  console.log('📋 Request headers:', Object.fromEntries(request.headers.entries()));
+type ErrorResponse = {
+  errors: {
+    email?: string;
+    phoneNumber?: {
+      number?: string;
+      country?: string;
+    };
+    physicalAddress?: {
+      address1?: string;
+      address2?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      countryCode?: string;
+    };
+    name?: {
+      firstName?: string;
+      familyName?: string;
+    };
+    onchainAddress?: string;
+    server?: string; // For server errors
+  };
+};
+
+type SuccessResponse = {
+  calls: {
+    to: string;
+    data: string;
+  }[];
+  chainId: string;
+  version: string;
+  capabilities: {
+    dataCallback: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+};
+
+export async function POST(request: Request): Promise<Response> {
+  console.log('📨 Data callback request received');
 
   try {
-    const requestData = await request.json();
-    console.log('📋 Full request data:', JSON.stringify(requestData, null, 2));
+    const requestData: CallbackRequest = await request.json();
+    console.log('📋 Request data:', JSON.stringify(requestData, null, 2));
 
-    // Validate required fields
-    if (!requestData.calls || !requestData.chainId || !requestData.version) {
-      console.error('❌ Missing required fields:', {
-        hasCalls: !!requestData.calls,
-        hasChainId: !!requestData.chainId,
-        hasVersion: !!requestData.version,
-      });
-      const response = Response.json({
-        errors: { server: 'Missing required fields' },
-      });
-      return addCorsHeaders(response);
-    }
-
-    if (!requestData.capabilities?.dataCallback) {
-      console.error('❌ Missing dataCallback capability');
-      const response = Response.json({
-        errors: { server: 'Missing dataCallback capability' },
-      });
-      return addCorsHeaders(response);
-    }
-
+    // Extract requested info from the structure defined in docs
     const { requestedInfo } = requestData.capabilities.dataCallback;
 
     if (!requestedInfo) {
-      console.log('⚠️ No requestedInfo - returning original request');
-      const response = Response.json({
+      console.log('⚠️ No requestedInfo found');
+      // Return success with original data if no requestedInfo
+      const response: SuccessResponse = {
         calls: requestData.calls,
         chainId: requestData.chainId,
         version: requestData.version,
         capabilities: requestData.capabilities,
-      });
-      return addCorsHeaders(response);
+      };
+      return Response.json(response);
     }
 
-    console.log('📋 RequestedInfo received:', {
-      hasEmail: !!requestedInfo.email,
-      hasPhoneNumber: !!requestedInfo.phoneNumber,
-      hasPhysicalAddress: !!requestedInfo.physicalAddress,
-      hasName: !!requestedInfo.name,
-      hasOnchainAddress: !!requestedInfo.onchainAddress,
+    console.log('📋 RequestedInfo structure:', {
+      email: requestedInfo.email || 'not provided',
+      phoneNumber: requestedInfo.phoneNumber ? 'provided' : 'not provided',
+      physicalAddress: requestedInfo.physicalAddress ? 'provided' : 'not provided',
+      name: requestedInfo.name ? 'provided' : 'not provided',
+      onchainAddress: requestedInfo.onchainAddress || 'not provided',
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const errors: Record<string, any> = {};
+    // Validation logic following the docs example
+    const errors: ErrorResponse['errors'] = {};
 
     // Validate email
     if (requestedInfo.email && requestedInfo.email.endsWith('@example.com')) {
@@ -80,49 +124,54 @@ export async function POST(request: Request) {
       }
     }
 
+    // Validate name
+    if (requestedInfo.name) {
+      if (requestedInfo.name.firstName && requestedInfo.name.firstName.length < 2) {
+        if (!errors.name) errors.name = {};
+        errors.name.firstName = 'First name too short';
+      }
+    }
+
+    // Validate phone number
+    if (requestedInfo.phoneNumber) {
+      if (requestedInfo.phoneNumber.number && requestedInfo.phoneNumber.number.length < 10) {
+        if (!errors.phoneNumber) errors.phoneNumber = {};
+        errors.phoneNumber.number = 'Invalid phone number';
+      }
+    }
+
     // Return errors if any found
     if (Object.keys(errors).length > 0) {
       console.log('⚠️ Validation errors found:', errors);
-      const errorResponse = { errors };
-      console.log('📤 Sending error response:', JSON.stringify(errorResponse, null, 2));
-      const response = Response.json(errorResponse);
-      return addCorsHeaders(response);
+      const errorResponse: ErrorResponse = { errors };
+      return Response.json(errorResponse);
     }
 
-    // Success - return original calls with exact same structure
-    const successResponse = {
+    // Success - return original calls (must include dataCallback capability)
+    console.log('✅ Validation successful');
+    const successResponse: SuccessResponse = {
       calls: requestData.calls,
       chainId: requestData.chainId,
       version: requestData.version,
       capabilities: requestData.capabilities,
     };
 
-    console.log('✅ Validation successful');
-    console.log('📤 Sending success response:', JSON.stringify(successResponse, null, 2));
-
-    const response = Response.json(successResponse);
-    return addCorsHeaders(response);
+    console.log('📤 Success response:', JSON.stringify(successResponse, null, 2));
+    return Response.json(successResponse);
   } catch (error) {
     console.error('❌ Data callback error:', error);
-    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack');
-
-    const errorResponse = {
+    const errorResponse: ErrorResponse = {
       errors: { server: 'Server error validating data' },
     };
-    console.log('📤 Sending server error response:', JSON.stringify(errorResponse, null, 2));
-
-    const response = Response.json(errorResponse);
-    return addCorsHeaders(response);
+    return Response.json(errorResponse);
   }
 }
 
-// Handle GET requests (for testing/health checks)
+// Health check endpoint
 export async function GET(): Promise<Response> {
-  console.log('📨 GET request to data callback endpoint');
-  const response = Response.json({
+  return Response.json({
     message: 'Data callback endpoint is active',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
+    status: 'healthy',
   });
-  return addCorsHeaders(response);
 }
