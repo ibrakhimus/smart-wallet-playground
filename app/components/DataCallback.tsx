@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useHydration } from '../hooks/useHydration';
-import { useAccount, useWalletClient } from 'wagmi';
+import { useAccount, useWalletClient, useChainId } from 'wagmi';
 import { numberToHex, encodeFunctionData } from 'viem';
 import { Button } from './ui/Button';
 import { ConnectWalletPrompt } from './ui/ConnectWalletPrompt';
@@ -10,7 +10,6 @@ import { FeatureLayout } from './ui/FeatureLayout';
 import { Switch } from './ui/Switch';
 import { useWallet } from '../context/WagmiContextProvider';
 
-// TypeScript types following the documentation exactly
 type DataCallbackType = 'email' | 'phoneNumber' | 'physicalAddress' | 'name' | 'onchainAddress';
 
 type DataCallbackRequestType = {
@@ -22,6 +21,16 @@ type DataCallbackCapability = {
   requests: DataCallbackRequestType[];
   callbackURL?: string;
 };
+
+const CHAIN_TO_USDC_ADDRESS = {
+  8453: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Base
+  84532: '0x036CbD53842c5426634e7929541eC2318f3dCF7e', // Base Sepolia
+} as const;
+
+const CHAIN_NAMES = {
+  8453: 'Base',
+  84532: 'Base Sepolia',
+} as const;
 
 const TEST_CASES = [
   {
@@ -80,9 +89,16 @@ type DataOptional = {
 export function DataCallback() {
   const { addLog } = useWallet();
   const { isConnected } = useAccount();
+  const chainId = useChainId(); // Get current chain from global header
   const isHydrated = useHydration();
+
   // Display states to prevent hydration mismatch
   const displayIsConnected = isHydrated && isConnected;
+  const displayChainId = isHydrated ? chainId : undefined;
+
+  // Check if current chain supports data callback (has USDC contract)
+  const currentChainSupported = displayChainId ? displayChainId in CHAIN_TO_USDC_ADDRESS : false;
+  const currentChainName = displayChainId ? CHAIN_NAMES[displayChainId as keyof typeof CHAIN_NAMES] : 'Unknown';
 
   // Data request state
   const [dataRequests, setDataRequests] = useState<DataRequest>({
@@ -167,6 +183,14 @@ export function DataCallback() {
       return;
     }
 
+    if (!currentChainSupported || !displayChainId) {
+      addLog({
+        type: 'error',
+        data: `Data callback not supported on ${currentChainName}. Please switch to Base or Base Sepolia.`,
+      });
+      return;
+    }
+
     const activeRequests = Object.entries(dataRequests)
       .filter(([, isActive]) => isActive)
       .map(([field]) => field);
@@ -183,6 +207,9 @@ export function DataCallback() {
     setSendCallsError(null);
 
     try {
+      // Get the correct USDC contract address for current chain
+      const usdcAddress = CHAIN_TO_USDC_ADDRESS[displayChainId as keyof typeof CHAIN_TO_USDC_ADDRESS];
+
       // Build requests following the documentation format exactly
       const requests: DataCallbackRequestType[] = activeRequests.map((field) => ({
         type: field as DataCallbackType,
@@ -195,7 +222,7 @@ export function DataCallback() {
 
       addLog({
         type: 'message',
-        data: `Submitting transaction with data callback requests: ${requests.map((r) => `${r.type}${r.optional ? ' (optional)' : ''}`).join(', ')}`,
+        data: `Submitting transaction on ${currentChainName} with data callback requests: ${requests.map((r) => `${r.type}${r.optional ? ' (optional)' : ''}`).join(', ')}`,
       });
 
       if (callbackEnabled && callbackURL) {
@@ -211,14 +238,13 @@ export function DataCallback() {
         ...(callbackEnabled && callbackURL && { callbackURL }),
       };
 
-      // wallet_sendCalls params following docs format exactly
       const sendCallsParams = [
         {
           version: '1.0',
-          chainId: numberToHex(84532), // Base Sepolia
+          chainId: numberToHex(displayChainId), // Dynamic chain ID from global header
           calls: [
             {
-              to: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC contract
+              to: usdcAddress, // Dynamic USDC address for current chain
               data: encodeFunctionData({
                 abi: [
                   {
@@ -268,7 +294,17 @@ export function DataCallback() {
     } finally {
       setIsPending(false);
     }
-  }, [displayIsConnected, walletClient, dataRequests, dataOptional, callbackEnabled, addLog]);
+  }, [
+    displayIsConnected,
+    walletClient,
+    dataRequests,
+    dataOptional,
+    callbackEnabled,
+    addLog,
+    currentChainSupported,
+    displayChainId,
+    currentChainName,
+  ]);
 
   // Log transaction results
   useEffect(() => {
