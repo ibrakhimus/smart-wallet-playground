@@ -175,10 +175,21 @@ export function DataCallback() {
         optional: dataOptional[field as keyof DataOptional],
       }));
 
+      const callbackURL = callbackEnabled
+        ? `${process.env.NEXT_PUBLIC_CALLBACK_BASE_URL || window.location.origin}/api/data-callback`
+        : undefined;
+
       addLog({
         type: 'message',
         data: `Submitting transaction with data callback requests: ${requests.map((r) => `${r.type}${r.optional ? ' (optional)' : ''}`).join(', ')}`,
       });
+
+      if (callbackEnabled) {
+        addLog({
+          type: 'message',
+          data: `Using callback URL: ${callbackURL}`,
+        });
+      }
 
       const sendCallsParams = [
         {
@@ -207,9 +218,7 @@ export function DataCallback() {
           capabilities: {
             dataCallback: {
               requests,
-              callbackURL: callbackEnabled
-                ? `${process.env.NEXT_PUBLIC_CALLBACK_BASE_URL || window.location.origin}/api/data-callback`
-                : undefined,
+              callbackURL,
             },
           },
         },
