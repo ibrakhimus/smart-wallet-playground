@@ -11,7 +11,6 @@ import {
   Bug,
   TestTube,
   FileCode,
-  Database,
 } from 'lucide-react';
 
 // Import all feature components
@@ -22,7 +21,6 @@ import { SDKConfig } from '../../app/components/SDKConfig';
 import { EventLog } from '../../app/components/EventLog';
 import { PersonalSign } from '../../app/components/PersonalSign';
 import { SignTypedData } from '../../app/components/SignTypedData';
-import { DataCallback } from '../../app/components/DataCallback';
 
 export type Feature = {
   id: string;
@@ -81,15 +79,6 @@ export const FEATURES: Feature[] = [
     category: 'wallet',
     component: AppPaymaster,
     priority: 5,
-  },
-  {
-    id: 'data-callback',
-    title: 'Data Callback',
-    route: '/wallet/data-callback',
-    icon: Database,
-    category: 'wallet',
-    component: DataCallback,
-    priority: 6,
   },
 
   // Configuration
