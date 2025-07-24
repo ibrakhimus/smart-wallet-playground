@@ -2,6 +2,11 @@ import { useCallback, useState, useEffect } from 'react';
 import { useWagmiTransactions } from '../hooks/useWagmiTransactions';
 import { isAddress } from 'viem';
 import { useHydration } from '../hooks/useHydration';
+import { Button } from './ui/Button';
+import { ConnectWalletPrompt } from './ui/ConnectWalletPrompt';
+import { FeatureLayout } from './ui/FeatureLayout';
+import { PillButton } from './ui/PillButton';
+import { Input } from './ui/Input';
 
 const VITALIK_ADDRESS = '0xd8da6bf26964af9d7eed9e03e53415d37aa96045' as const;
 
@@ -74,87 +79,73 @@ export function SendETH() {
   };
 
   return (
-    <div className="flex flex-col bg-slate-800 rounded-md p-4 justify-between">
-      <h2 className="text-white mb-2 self-center">ETH Send</h2>
+    <FeatureLayout showCard={false}>
+      {/* Connection Status */}
+      {!displayIsConnected && <ConnectWalletPrompt />}
 
-      <div className="flex flex-col space-y-4">
-        {/* Balance Display */}
-        {displayIsConnected && (
-          <div className="text-white text-sm">
+      {displayIsConnected && (
+        <div className="space-y-8">
+          {/* Balance Display */}
+          <div className="text-white text-md font-semibold">
             {isHydrated ? `Balance: ${parseFloat(ethBalance).toFixed(6)} ETH` : 'Loading...'}
           </div>
-        )}
 
-        <div className="flex flex-col space-y-2">
-          <label className="text-white text-sm">To Address</label>
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            <button
-              onClick={() => setToAddress(VITALIK_ADDRESS)}
-              className="py-2 px-4 bg-slate-700 text-white rounded-md border border-slate-600 hover:bg-slate-600 transition-colors text-sm cursor-pointer"
-            >
-              vitalik.eth
-            </button>
-          </div>
-          <input
-            type="text"
-            value={toAddress}
-            onChange={(e) => setToAddress(e.target.value)}
-            placeholder="0x..."
-            className={`px-2 py-1 bg-slate-700 border rounded text-white font-mono ${
-              toAddress && !isAddress(toAddress) ? 'border-red-500' : 'border-slate-600'
-            }`}
-          />
-          {toAddress && !isAddress(toAddress) && <span className="text-red-400 text-xs">Invalid address</span>}
-        </div>
-
-        <div className="flex flex-col space-y-2">
-          <label className="text-white text-sm">Amount (ETH)</label>
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            {Object.entries(AMOUNT_SHORTCUTS).map(([label, value]) => (
-              <button
-                key={value}
-                onClick={() => setAmount(value)}
-                className="py-2 px-4 bg-slate-700 text-white rounded-md border border-slate-600 hover:bg-slate-600 transition-colors text-sm cursor-pointer"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <input
-            type="text"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00"
-            className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white font-mono"
-          />
-        </div>
-
-        <button
-          onClick={handleSendETH}
-          disabled={isButtonDisabled()}
-          className={`py-2 px-4 rounded-md border transition-colors ${
-            isButtonDisabled()
-              ? 'bg-slate-600 text-slate-400 border-slate-500 cursor-not-allowed'
-              : 'bg-slate-700 text-white border-slate-600 hover:bg-slate-600 cursor-pointer'
-          }`}
-        >
-          {getButtonText()}
-        </button>
-
-        {/* Transaction Status */}
-        {ethTxHash && (
-          <div className="text-white text-xs">
-            <div>
-              Hash: {ethTxHash.slice(0, 10)}...{ethTxHash.slice(-8)}
+          {/* To Address Section */}
+          <div>
+            <label className="text-white text-sm font-medium">To Address</label>
+            <div className="flex gap-2 mb-4 mt-2">
+              <PillButton onClick={() => setToAddress(VITALIK_ADDRESS)}>vitalik.eth</PillButton>
             </div>
-            {ethTxReceipt && <div className="text-green-400">✓ Confirmed</div>}
+            <Input
+              type="text"
+              value={toAddress}
+              onChange={(e) => setToAddress(e.target.value)}
+              placeholder="0x..."
+              error={toAddress && !isAddress(toAddress) ? 'Invalid address' : undefined}
+            />
           </div>
-        )}
 
-        {ethTxError && <div className="text-red-400 text-xs">Error: {ethTxError.message || 'Transaction failed'}</div>}
+          {/* Amount Section */}
+          <div>
+            <label className="text-white text-sm font-medium">Amount (ETH)</label>
+            <div className="flex gap-2 mb-4 mt-2">
+              {Object.entries(AMOUNT_SHORTCUTS).map(([label, value]) => (
+                <PillButton key={value} onClick={() => setAmount(value)}>
+                  {label}
+                </PillButton>
+              ))}
+            </div>
+            <Input type="text" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+          </div>
 
-        {!displayIsConnected && <div className="text-slate-400 text-sm text-center">Connect wallet to send ETH</div>}
-      </div>
-    </div>
+          {/* Action Button */}
+          <div className="flex justify-center">
+            <Button
+              onClick={handleSendETH}
+              disabled={isButtonDisabled()}
+              isLoading={isSendingETH || isWaitingForETH}
+              loadingText={isSendingETH ? 'Sending...' : 'Confirming...'}
+              fullWidth
+            >
+              {getButtonText()}
+            </Button>
+          </div>
+
+          {/* Transaction Status */}
+          {ethTxHash && (
+            <div className="space-y-2">
+              <div className="text-white text-base">
+                Hash: {ethTxHash.slice(0, 10)}...{ethTxHash.slice(-8)}
+              </div>
+              {ethTxReceipt && <div className="text-green-400 text-base">✓ Confirmed</div>}
+            </div>
+          )}
+
+          {ethTxError && (
+            <div className="text-red-400 text-base">Error: {ethTxError.message || 'Transaction failed'}</div>
+          )}
+        </div>
+      )}
+    </FeatureLayout>
   );
 }

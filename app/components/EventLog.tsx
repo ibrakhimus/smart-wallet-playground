@@ -44,7 +44,7 @@ export function EventLog() {
   }, [eventLogs]);
 
   return (
-    <div className="flex flex-col bg-slate-900 rounded-md overflow-hidden">
+    <div className="flex flex-col bg-slate-900 rounded-md overflow-hidden mt-20">
       <div className="w-full bg-slate-800 border-b border-slate-700 py-4 flex items-center justify-between px-4">
         <div
           onClick={() => setIsExpanded(!isExpanded)}
