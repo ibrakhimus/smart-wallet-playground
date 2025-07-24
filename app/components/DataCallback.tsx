@@ -119,6 +119,43 @@ export function DataCallback() {
 
   const [callbackEnabled, setCallbackEnabled] = useState<boolean>(false);
 
+  // Enhanced callback configuration based on the comprehensive example
+  const [callbackConfig, setCallbackConfig] = useState({
+    calls: {
+      enabled: false,
+      items: [] as Array<{
+        to: string;
+        data?: string;
+        value?: string;
+      }>,
+    },
+    capabilities: {
+      enabled: false,
+      paymasterUrl: '',
+    },
+    errors: {
+      enabled: false,
+      name: {
+        firstName: '',
+        lastName: '',
+      },
+      email: '',
+      phoneNumber: {
+        countryCode: '',
+        number: '',
+      },
+      physicalAddress: {
+        address1: '',
+        address2: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: '',
+      },
+      onchainAddress: '',
+    },
+  });
+
   const { data: walletClient } = useWalletClient();
   const [isPending, setIsPending] = useState(false);
   const [callsId, setCallsId] = useState<string | null>(null);
@@ -216,6 +253,7 @@ export function DataCallback() {
         optional: dataOptional[field as keyof DataOptional],
       }));
 
+      // According to docs, callback URL should be a simple endpoint
       const callbackURL = callbackEnabled
         ? `${process.env.NEXT_PUBLIC_CALLBACK_BASE_URL || window.location.origin}/api/data-callback`
         : undefined;
@@ -354,6 +392,8 @@ export function DataCallback() {
             </div>
           </div>
 
+          {/* Callback Presets */}
+
           {/* Data Requests */}
           <div className="space-y-4">
             <h3 className="text-white text-lg font-semibold">Data Requests</h3>
@@ -465,6 +505,462 @@ export function DataCallback() {
               />
               <span className="text-white font-medium">Enable Callback</span>
             </div>
+
+            {callbackEnabled && (
+              <div className="mt-4 p-4 bg-gray-900/50 rounded-2xl border border-gray-700 space-y-4">
+                {/* Calls Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={callbackConfig.calls.enabled}
+                      onChange={(e) =>
+                        setCallbackConfig((prev) => ({
+                          ...prev,
+                          calls: { ...prev.calls, enabled: e.target.checked },
+                        }))
+                      }
+                      className="rounded bg-black border-gray-700 text-blue-600 focus:ring-blue-600 focus:ring-offset-0"
+                    />
+                    <span className="text-white font-medium">Calls</span>
+                  </div>
+
+                  {callbackConfig.calls.enabled && (
+                    <div className="pl-6 space-y-2">
+                      <div className="flex gap-2 mb-2">
+                        <button
+                          onClick={() =>
+                            setCallbackConfig((prev) => ({
+                              ...prev,
+                              calls: {
+                                ...prev.calls,
+                                items: [
+                                  ...prev.calls.items,
+                                  {
+                                    to: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+                                    data: encodeFunctionData({
+                                      abi: [
+                                        {
+                                          name: 'transfer',
+                                          type: 'function',
+                                          inputs: [
+                                            { name: 'to', type: 'address' },
+                                            { name: 'amount', type: 'uint256' },
+                                          ],
+                                          outputs: [{ name: '', type: 'bool' }],
+                                        },
+                                      ],
+                                      functionName: 'transfer',
+                                      args: ['0xd8da6bf26964af9d7eed9e03e53415d37aa96045', BigInt('10000')],
+                                    }),
+                                  },
+                                ],
+                              },
+                            }))
+                          }
+                          className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm"
+                        >
+                          Add USDC Call
+                        </button>
+                        <button
+                          onClick={() =>
+                            setCallbackConfig((prev) => ({
+                              ...prev,
+                              calls: {
+                                ...prev.calls,
+                                items: [
+                                  ...prev.calls.items,
+                                  { to: '0xd8da6bf26964af9d7eed9e03e53415d37aa96045', value: '10000000000000000' },
+                                ],
+                              },
+                            }))
+                          }
+                          className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm"
+                        >
+                          Add ETH Call
+                        </button>
+                      </div>
+
+                      {/* Display added calls */}
+                      {callbackConfig.calls.items.map((call, index) => (
+                        <div key={index} className="border border-gray-700 p-3 rounded-md mb-4">
+                          <div className="flex justify-between mb-2">
+                            <span className="text-white font-medium">Call #{index + 1}</span>
+                            <button
+                              onClick={() =>
+                                setCallbackConfig((prev) => ({
+                                  ...prev,
+                                  calls: {
+                                    ...prev.calls,
+                                    items: prev.calls.items.filter((_, i) => i !== index),
+                                  },
+                                }))
+                              }
+                              className="text-red-500 text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 gap-2">
+                            <div>
+                              <label className="block text-sm text-gray-300 mb-1">To:</label>
+                              <input
+                                type="text"
+                                value={call.to}
+                                onChange={(e) =>
+                                  setCallbackConfig((prev) => ({
+                                    ...prev,
+                                    calls: {
+                                      ...prev.calls,
+                                      items: prev.calls.items.map((c, i) =>
+                                        i === index ? { ...c, to: e.target.value } : c,
+                                      ),
+                                    },
+                                  }))
+                                }
+                                className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-300 mb-1">Data:</label>
+                              <input
+                                type="text"
+                                value={call.data || ''}
+                                onChange={(e) =>
+                                  setCallbackConfig((prev) => ({
+                                    ...prev,
+                                    calls: {
+                                      ...prev.calls,
+                                      items: prev.calls.items.map((c, i) =>
+                                        i === index ? { ...c, data: e.target.value } : c,
+                                      ),
+                                    },
+                                  }))
+                                }
+                                className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-300 mb-1">Value (in wei):</label>
+                              <input
+                                type="text"
+                                value={call.value || ''}
+                                onChange={(e) =>
+                                  setCallbackConfig((prev) => ({
+                                    ...prev,
+                                    calls: {
+                                      ...prev.calls,
+                                      items: prev.calls.items.map((c, i) =>
+                                        i === index ? { ...c, value: e.target.value } : c,
+                                      ),
+                                    },
+                                  }))
+                                }
+                                className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Capabilities Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={callbackConfig.capabilities.enabled}
+                      onChange={(e) =>
+                        setCallbackConfig((prev) => ({
+                          ...prev,
+                          capabilities: { ...prev.capabilities, enabled: e.target.checked },
+                        }))
+                      }
+                      className="rounded bg-black border-gray-700 text-blue-600 focus:ring-blue-600 focus:ring-offset-0"
+                    />
+                    <span className="text-white font-medium">Capabilities</span>
+                  </div>
+
+                  {callbackConfig.capabilities.enabled && (
+                    <div className="pl-6">
+                      <div>
+                        <label className="block text-sm text-gray-300 mb-1">Paymaster URL:</label>
+                        <input
+                          type="text"
+                          value={callbackConfig.capabilities.paymasterUrl}
+                          onChange={(e) =>
+                            setCallbackConfig((prev) => ({
+                              ...prev,
+                              capabilities: { ...prev.capabilities, paymasterUrl: e.target.value },
+                            }))
+                          }
+                          placeholder="https://..."
+                          className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Errors Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={callbackConfig.errors.enabled}
+                      onChange={(e) =>
+                        setCallbackConfig((prev) => ({
+                          ...prev,
+                          errors: { ...prev.errors, enabled: e.target.checked },
+                        }))
+                      }
+                      className="rounded bg-black border-gray-700 text-blue-600 focus:ring-blue-600 focus:ring-offset-0"
+                    />
+                    <span className="text-white font-medium">Errors</span>
+                  </div>
+
+                  {callbackConfig.errors.enabled && (
+                    <div className="pl-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Name Errors */}
+                        <div className="border border-gray-700 p-3 rounded-md">
+                          <h3 className="text-white font-medium mb-2">Name</h3>
+                          <div className="grid grid-cols-1 gap-2">
+                            <div>
+                              <label className="block text-sm text-gray-300 mb-1">First Name Error:</label>
+                              <input
+                                type="text"
+                                value={callbackConfig.errors.name.firstName}
+                                onChange={(e) =>
+                                  setCallbackConfig((prev) => ({
+                                    ...prev,
+                                    errors: {
+                                      ...prev.errors,
+                                      name: { ...prev.errors.name, firstName: e.target.value },
+                                    },
+                                  }))
+                                }
+                                className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-300 mb-1">Last Name Error:</label>
+                              <input
+                                type="text"
+                                value={callbackConfig.errors.name.lastName}
+                                onChange={(e) =>
+                                  setCallbackConfig((prev) => ({
+                                    ...prev,
+                                    errors: {
+                                      ...prev.errors,
+                                      name: { ...prev.errors.name, lastName: e.target.value },
+                                    },
+                                  }))
+                                }
+                                className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Email Error */}
+                        <div className="border border-gray-700 p-3 rounded-md">
+                          <h3 className="text-white font-medium mb-2">Email</h3>
+                          <div>
+                            <label className="block text-sm text-gray-300 mb-1">Email Error:</label>
+                            <input
+                              type="text"
+                              value={callbackConfig.errors.email}
+                              onChange={(e) =>
+                                setCallbackConfig((prev) => ({
+                                  ...prev,
+                                  errors: { ...prev.errors, email: e.target.value },
+                                }))
+                              }
+                              className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Phone Number Errors */}
+                        <div className="border border-gray-700 p-3 rounded-md">
+                          <h3 className="text-white font-medium mb-2">Phone Number</h3>
+                          <div className="grid grid-cols-1 gap-2">
+                            <div>
+                              <label className="block text-sm text-gray-300 mb-1">Country Code Error:</label>
+                              <input
+                                type="text"
+                                value={callbackConfig.errors.phoneNumber.countryCode}
+                                onChange={(e) =>
+                                  setCallbackConfig((prev) => ({
+                                    ...prev,
+                                    errors: {
+                                      ...prev.errors,
+                                      phoneNumber: { ...prev.errors.phoneNumber, countryCode: e.target.value },
+                                    },
+                                  }))
+                                }
+                                className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-300 mb-1">Number Error:</label>
+                              <input
+                                type="text"
+                                value={callbackConfig.errors.phoneNumber.number}
+                                onChange={(e) =>
+                                  setCallbackConfig((prev) => ({
+                                    ...prev,
+                                    errors: {
+                                      ...prev.errors,
+                                      phoneNumber: { ...prev.errors.phoneNumber, number: e.target.value },
+                                    },
+                                  }))
+                                }
+                                className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Physical Address Errors */}
+                        <div className="border border-gray-700 p-3 rounded-md">
+                          <h3 className="text-white font-medium mb-2">Physical Address</h3>
+                          <div className="grid grid-cols-1 gap-2">
+                            <div>
+                              <label className="block text-sm text-gray-300 mb-1">Address Line 1 Error:</label>
+                              <input
+                                type="text"
+                                value={callbackConfig.errors.physicalAddress.address1}
+                                onChange={(e) =>
+                                  setCallbackConfig((prev) => ({
+                                    ...prev,
+                                    errors: {
+                                      ...prev.errors,
+                                      physicalAddress: { ...prev.errors.physicalAddress, address1: e.target.value },
+                                    },
+                                  }))
+                                }
+                                className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-300 mb-1">Address Line 2 Error:</label>
+                              <input
+                                type="text"
+                                value={callbackConfig.errors.physicalAddress.address2}
+                                onChange={(e) =>
+                                  setCallbackConfig((prev) => ({
+                                    ...prev,
+                                    errors: {
+                                      ...prev.errors,
+                                      physicalAddress: { ...prev.errors.physicalAddress, address2: e.target.value },
+                                    },
+                                  }))
+                                }
+                                className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-300 mb-1">City Error:</label>
+                              <input
+                                type="text"
+                                value={callbackConfig.errors.physicalAddress.city}
+                                onChange={(e) =>
+                                  setCallbackConfig((prev) => ({
+                                    ...prev,
+                                    errors: {
+                                      ...prev.errors,
+                                      physicalAddress: { ...prev.errors.physicalAddress, city: e.target.value },
+                                    },
+                                  }))
+                                }
+                                className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-300 mb-1">State Error:</label>
+                              <input
+                                type="text"
+                                value={callbackConfig.errors.physicalAddress.state}
+                                onChange={(e) =>
+                                  setCallbackConfig((prev) => ({
+                                    ...prev,
+                                    errors: {
+                                      ...prev.errors,
+                                      physicalAddress: { ...prev.errors.physicalAddress, state: e.target.value },
+                                    },
+                                  }))
+                                }
+                                className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-300 mb-1">Postal Code Error:</label>
+                              <input
+                                type="text"
+                                value={callbackConfig.errors.physicalAddress.postalCode}
+                                onChange={(e) =>
+                                  setCallbackConfig((prev) => ({
+                                    ...prev,
+                                    errors: {
+                                      ...prev.errors,
+                                      physicalAddress: {
+                                        ...prev.errors.physicalAddress,
+                                        postalCode: e.target.value,
+                                      },
+                                    },
+                                  }))
+                                }
+                                className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-300 mb-1">Country Error:</label>
+                              <input
+                                type="text"
+                                value={callbackConfig.errors.physicalAddress.country}
+                                onChange={(e) =>
+                                  setCallbackConfig((prev) => ({
+                                    ...prev,
+                                    errors: {
+                                      ...prev.errors,
+                                      physicalAddress: { ...prev.errors.physicalAddress, country: e.target.value },
+                                    },
+                                  }))
+                                }
+                                className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Onchain Address Error */}
+                        <div className="border border-gray-700 p-3 rounded-md md:col-span-2">
+                          <h3 className="text-white font-medium mb-2">Onchain Address</h3>
+                          <div>
+                            <label className="block text-sm text-gray-300 mb-1">Onchain Address Error:</label>
+                            <input
+                              type="text"
+                              value={callbackConfig.errors.onchainAddress}
+                              onChange={(e) =>
+                                setCallbackConfig((prev) => ({
+                                  ...prev,
+                                  errors: { ...prev.errors, onchainAddress: e.target.value },
+                                }))
+                              }
+                              className="w-full p-1 border border-gray-700 rounded bg-black text-white"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Submit Button */}

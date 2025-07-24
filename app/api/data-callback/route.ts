@@ -6,18 +6,20 @@ type RequestedInfo = {
     isPrimary: boolean;
   };
   physicalAddress?: {
-    address1: string;
-    address2?: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    countryCode: string;
-    name?: {
-      firstName: string;
-      familyName: string;
+    physicalAddress: {
+      address1: string;
+      address2?: string;
+      city: string;
+      state: string;
+      postalCode: string;
+      countryCode: string;
+      name?: {
+        firstName: string;
+        familyName: string;
+      };
     };
+    isPrimary: boolean;
   };
-  isPrimary?: boolean;
   name?: {
     firstName: string;
     familyName: string;
@@ -94,7 +96,6 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json(response);
     }
 
-    // Validation logic
     const errors: ErrorResponse['errors'] = {};
 
     // Validate email
@@ -104,7 +105,7 @@ export async function POST(request: Request): Promise<Response> {
 
     // Validate physical address
     if (requestedInfo.physicalAddress) {
-      const addr = requestedInfo.physicalAddress;
+      const addr = requestedInfo.physicalAddress.physicalAddress;
       if (addr.postalCode && addr.postalCode.length < 5) {
         if (!errors.physicalAddress) errors.physicalAddress = {};
         errors.physicalAddress.postalCode = 'Invalid postal code';
