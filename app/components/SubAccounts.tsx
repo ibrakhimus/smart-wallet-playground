@@ -89,6 +89,12 @@ export function SubAccountManager() {
     setStatus('Creating Sub Account...');
 
     try {
+      // First, ensure we're connected by requesting accounts
+      await provider.request({
+        method: 'eth_requestAccounts',
+        params: [],
+      });
+
       const newSubAccount = (await provider.request({
         method: 'wallet_addSubAccount',
         params: [
@@ -129,6 +135,12 @@ export function SubAccountManager() {
     try {
       setSubAccount(null);
 
+      // First, ensure we're connected by requesting accounts
+      await provider.request({
+        method: 'eth_requestAccounts',
+        params: [],
+      });
+
       const newSubAccount = (await provider.request({
         method: 'wallet_addSubAccount',
         params: [
@@ -161,6 +173,12 @@ export function SubAccountManager() {
     setStatus('Creating Sub Account with Spend Permission...');
 
     try {
+      // First, ensure we're connected by requesting accounts
+      await provider.request({
+        method: 'eth_requestAccounts',
+        params: [],
+      });
+
       // Step 1: Create sub account
       const newSubAccount = (await provider.request({
         method: 'wallet_addSubAccount',
