@@ -1,12 +1,19 @@
 import { createBaseAccountSDK } from '@base-org/account';
+import { requestSpendPermission, prepareSpendCallData } from '@base-org/account/spend-permission';
 import { useCallback, useEffect, useState } from 'react';
 import { useChainId } from 'wagmi';
-import { numberToHex } from 'viem';
+import { numberToHex, parseEther, formatEther } from 'viem';
 import { FeatureLayout } from './ui/FeatureLayout';
 import { ConnectWalletPrompt } from './ui/ConnectWalletPrompt';
 import { Button } from './ui/Button';
 import { useAccount } from 'wagmi';
 import { useHydration } from '../hooks/useHydration';
+
+// Constants for spend permissions
+const SPEND_ALLOWANCE = parseEther('0.01'); // 0.01 ETH allowance
+const TRANSACTION_AMOUNT = parseEther('0.001'); // 0.001 ETH per transaction
+const SPEND_PERIOD_DAYS = 30; // 30 day period
+const ETH_TOKEN_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'; // ERC-7528 native token
 
 type SubAccount = {
   address: `0x${string}`;
@@ -32,7 +39,9 @@ export function SubAccountManager() {
     null,
   );
   const [subAccount, setSubAccount] = useState<SubAccount | null>(null);
+  const [spendPermission, setSpendPermission] = useState<unknown | null>(null);
   const [loadingSubAccount, setLoadingSubAccount] = useState(false);
+  const [loadingSpendPermission, setLoadingSpendPermission] = useState(false);
   const [status, setStatus] = useState('');
 
   // Use dynamic values from global state
@@ -141,6 +150,97 @@ export function SubAccountManager() {
     }
   };
 
+  const createSubAccountWithSpendPermission = async () => {
+    if (!provider) {
+      setStatus('Provider not initialized');
+      return;
+    }
+
+    setLoadingSubAccount(true);
+    setLoadingSpendPermission(true);
+    setStatus('Creating Sub Account with Spend Permission...');
+
+    try {
+      // Step 1: Create sub account
+      const newSubAccount = (await provider.request({
+        method: 'wallet_addSubAccount',
+        params: [
+          {
+            account: {
+              type: 'create',
+            },
+          },
+        ],
+      })) as WalletAddSubAccountResponse;
+
+      setSubAccount(newSubAccount);
+      setStatus('Sub Account created! Now requesting spend permission...');
+
+      // Step 2: Request spend permission following the docs
+      const permission = await requestSpendPermission({
+        account: universalAddress as `0x${string}`,
+        spender: newSubAccount.address, // Sub account as spender
+        token: ETH_TOKEN_ADDRESS,
+        chainId: chainId,
+        allowance: SPEND_ALLOWANCE,
+        periodInDays: SPEND_PERIOD_DAYS,
+        provider: provider,
+      });
+
+      setSpendPermission(permission);
+      setStatus('Sub Account created with Spend Permission! Ready to transact.');
+    } catch (error) {
+      const errorMessage = (error as Error)?.message || 'Unknown error';
+      setStatus(`Creation failed: ${errorMessage}`);
+      setSubAccount(null);
+      setSpendPermission(null);
+    } finally {
+      setLoadingSubAccount(false);
+      setLoadingSpendPermission(false);
+    }
+  };
+
+  const transactWithSpendPermission = useCallback(async () => {
+    if (!spendPermission || !subAccount) {
+      setStatus('No spend permission or sub account available');
+      return;
+    }
+
+    setLoadingSpendPermission(true);
+    setStatus('Transacting using Spend Permission...');
+
+    try {
+      // Prepare the spend calls following the docs
+      const spendCalls = await prepareSpendCallData(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        spendPermission as any,
+        TRANSACTION_AMOUNT,
+      );
+
+      // Execute the calls using the sub account (spender)
+      const callsId = (await provider!.request({
+        method: 'wallet_sendCalls',
+        params: [
+          {
+            version: '2.0',
+            atomicRequired: true,
+            chainId: numberToHex(chainId),
+            from: subAccount.address, // Sub account is the spender
+            calls: spendCalls,
+            capabilities: {},
+          },
+        ],
+      })) as string;
+
+      setStatus(`Spend Permission transaction sent! Calls ID: ${callsId}`);
+    } catch (error) {
+      const errorMessage = (error as Error)?.message || 'Unknown error';
+      setStatus(`Spend transaction failed: ${errorMessage}`);
+    } finally {
+      setLoadingSpendPermission(false);
+    }
+  }, [spendPermission, subAccount, provider, chainId]);
+
   const sendCalls = useCallback(
     async (calls: Array<{ to: string; data: string; value: string }>, from: string) => {
       if (!provider) {
@@ -236,6 +336,14 @@ export function SubAccountManager() {
                   </div>
                 </div>
               )}
+              {!!spendPermission && (
+                <div className="space-y-1">
+                  <span className="text-gray-300 font-medium block">Spend Permission:</span>
+                  <div className="text-green-400 text-sm">
+                    ✅ Active ({formatEther(SPEND_ALLOWANCE)} ETH allowance for {SPEND_PERIOD_DAYS} days)
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -248,20 +356,49 @@ export function SubAccountManager() {
               </div>
             ) : !subAccount ? (
               <div className="space-y-4">
-                <div className="flex justify-center">
-                  <Button onClick={createSubAccount} isLoading={loadingSubAccount} fullWidth>
-                    {loadingSubAccount ? 'Creating...' : `Create Sub Account for Chain ${chainId}`}
-                  </Button>
+                <div className="space-y-3">
+                  <div className="flex justify-center">
+                    <Button
+                      onClick={createSubAccountWithSpendPermission}
+                      isLoading={loadingSubAccount || loadingSpendPermission}
+                      fullWidth
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {loadingSubAccount || loadingSpendPermission
+                        ? 'Creating...'
+                        : '🔒 Create Sub Account with Spend Permission'}
+                    </Button>
+                  </div>
+                  <div className="flex justify-center">
+                    <Button onClick={createSubAccount} isLoading={loadingSubAccount} fullWidth>
+                      {loadingSubAccount ? 'Creating...' : `🆓 Create Sub Account (No Spend Limit)`}
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="space-y-3">
-                  <div className="flex justify-center">
-                    <Button onClick={sendCallsFromSubAccount} isLoading={loadingSubAccount} fullWidth>
-                      {loadingSubAccount ? 'Sending...' : '📤 Send Transaction (yoink)'}
-                    </Button>
-                  </div>
+                  {!!spendPermission ? (
+                    <div className="flex justify-center">
+                      <Button
+                        onClick={transactWithSpendPermission}
+                        isLoading={loadingSpendPermission}
+                        fullWidth
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {loadingSpendPermission
+                          ? 'Transacting...'
+                          : `💰 Transact with Spend Permission (${formatEther(TRANSACTION_AMOUNT)} ETH)`}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex justify-center">
+                      <Button onClick={sendCallsFromSubAccount} isLoading={loadingSubAccount} fullWidth>
+                        {loadingSubAccount ? 'Sending...' : '📤 Send Transaction (yoink)'}
+                      </Button>
+                    </div>
+                  )}
                   <div className="flex justify-center">
                     <Button
                       onClick={createNewSubAccountForCurrentChain}
@@ -278,6 +415,7 @@ export function SubAccountManager() {
                     onClick={() => {
                       setProvider(null);
                       setSubAccount(null);
+                      setSpendPermission(null);
                       setStatus('');
                       localStorage.clear();
                       sessionStorage.clear();
