@@ -18,7 +18,7 @@ export function Sidebar() {
         {/* Sidebar Header */}
         <div className="flex items-center justify-between p-6">
           {!isCollapsed && (
-            <h1 className="text-xl font-bold text-white tracking-tight hidden lg:block">Smart Wallet</h1>
+            <h1 className="text-xl font-bold text-white tracking-tight hidden lg:block">Base Account Playground</h1>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
