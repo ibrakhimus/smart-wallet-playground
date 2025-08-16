@@ -4,7 +4,7 @@ import { baseAccount } from 'wagmi/connectors';
 
 export function createWagmiConfig(options?: { appName?: string; appLogoUrl?: string; walletUrl?: string }) {
   return createConfig({
-    chains: [base, mainnet, baseSepolia],
+    chains: [baseSepolia, base, mainnet],
     connectors: [
       baseAccount({
         appName: options?.appName || 'Smart Wallet Playground',
