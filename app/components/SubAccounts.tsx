@@ -8,6 +8,7 @@ import { ConnectWalletPrompt } from './ui/ConnectWalletPrompt';
 import { Button } from './ui/Button';
 import { useAccount } from 'wagmi';
 import { useHydration } from '../hooks/useHydration';
+import { useWallet } from '../context/WagmiContextProvider';
 
 // Constants for spend permissions
 const SPEND_ALLOWANCE = parseEther('0.01'); // 0.01 ETH allowance
@@ -28,6 +29,7 @@ type WalletAddSubAccountResponse = {
 };
 
 export function SubAccountManager() {
+  const { addLog } = useWallet();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const isHydrated = useHydration();
@@ -79,6 +81,16 @@ export function SubAccountManager() {
     }
   }, [connected, universalAddress, chainId]);
 
+  // Log status updates to event log
+  useEffect(() => {
+    if (status) {
+      addLog({
+        type: status.includes('failed') || status.includes('❌') ? 'error' : 'message',
+        data: status,
+      });
+    }
+  }, [status, addLog]);
+
   const createSubAccount = async () => {
     if (!provider) {
       setStatus('Provider not initialized');
@@ -108,6 +120,11 @@ export function SubAccountManager() {
 
       setSubAccount(newSubAccount);
       setStatus(`Sub Account created successfully for chain ${chainId}!`);
+
+      addLog({
+        type: 'message',
+        data: `Sub Account created: ${newSubAccount.address} on chain ${chainId}`,
+      });
     } catch (error) {
       const errorMessage = (error as Error)?.message || 'Unknown error';
 
@@ -154,6 +171,11 @@ export function SubAccountManager() {
 
       setSubAccount(newSubAccount);
       setStatus(`Sub Account created for chain ${chainId}!`);
+
+      addLog({
+        type: 'message',
+        data: `New Sub Account created: ${newSubAccount.address} on chain ${chainId}`,
+      });
     } catch (error) {
       const errorMessage = (error as Error)?.message || 'Unknown error';
       setStatus(`Sub Account creation failed: ${errorMessage}`);
@@ -207,6 +229,11 @@ export function SubAccountManager() {
 
       setSpendPermission(permission);
       setStatus('Sub Account created with Spend Permission! Ready to transact.');
+
+      addLog({
+        type: 'message',
+        data: `Sub Account with Spend Permission created: ${newSubAccount.address} (${formatEther(SPEND_ALLOWANCE)} ETH allowance)`,
+      });
     } catch (error) {
       const errorMessage = (error as Error)?.message || 'Unknown error';
       setStatus(`Creation failed: ${errorMessage}`);
@@ -251,13 +278,18 @@ export function SubAccountManager() {
       })) as string;
 
       setStatus(`Spend Permission transaction sent! Calls ID: ${callsId}`);
+
+      addLog({
+        type: 'message',
+        data: `Spend Permission transaction sent: ${callsId} (${formatEther(TRANSACTION_AMOUNT)} ETH)`,
+      });
     } catch (error) {
       const errorMessage = (error as Error)?.message || 'Unknown error';
       setStatus(`Spend transaction failed: ${errorMessage}`);
     } finally {
       setLoadingSpendPermission(false);
     }
-  }, [spendPermission, subAccount, provider, chainId]);
+  }, [spendPermission, subAccount, provider, chainId, addLog]);
 
   const sendCalls = useCallback(
     async (calls: Array<{ to: string; data: string; value: string }>, from: string) => {
@@ -285,6 +317,11 @@ export function SubAccountManager() {
         })) as string;
 
         setStatus(`Calls sent! Calls ID: ${callsId}`);
+
+        addLog({
+          type: 'message',
+          data: `Sub Account transaction sent: ${callsId} from ${from}`,
+        });
       } catch (error) {
         const errorMessage = (error as Error)?.message || 'Unknown error';
 
@@ -299,7 +336,7 @@ export function SubAccountManager() {
         setLoadingSubAccount(false);
       }
     },
-    [provider, chainId],
+    [provider, chainId, addLog],
   );
 
   const sendCallsFromSubAccount = useCallback(async () => {
