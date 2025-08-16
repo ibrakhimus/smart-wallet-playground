@@ -421,12 +421,12 @@ export function SubAccountManager() {
                     >
                       {loadingSubAccount || loadingSpendPermission
                         ? 'Creating...'
-                        : '🔒 Create Sub Account with Spend Permission'}
+                        : 'Create Sub Account with Spend Permission'}
                     </Button>
                   </div>
                   <div className="flex justify-center">
                     <Button onClick={createSubAccount} isLoading={loadingSubAccount} fullWidth>
-                      {loadingSubAccount ? 'Creating...' : `🆓 Create Sub Account (No Spend Limit)`}
+                      {loadingSubAccount ? 'Creating...' : `Create Sub Account (No Spend Limit)`}
                     </Button>
                   </div>
                 </div>
