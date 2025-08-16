@@ -369,7 +369,7 @@ export function DataCallback() {
       {!displayIsConnected && <ConnectWalletPrompt />}
 
       {displayIsConnected && (
-        <div className="space-y-8">
+        <div className="space-y-8 max-h-[calc(100vh-8rem)] overflow-y-auto pb-8 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-900">
           {/* Load Test Case */}
           <div className="space-y-4">
             <h3 className="text-white text-lg font-semibold">Load Test Case</h3>
