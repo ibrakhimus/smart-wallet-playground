@@ -12,6 +12,7 @@ import {
   TestTube,
   FileCode,
   Database,
+  Users,
 } from 'lucide-react';
 
 // Import all feature components
@@ -23,6 +24,7 @@ import { EventLog } from '../../app/components/EventLog';
 import { PersonalSign } from '../../app/components/PersonalSign';
 import { SignTypedData } from '../../app/components/SignTypedData';
 import { DataCallback } from '../../app/components/DataCallback';
+import { SubAccountManager } from '../../app/components/SubAccounts';
 
 export type Feature = {
   id: string;
@@ -90,6 +92,15 @@ export const FEATURES: Feature[] = [
     category: 'wallet',
     component: DataCallback,
     priority: 6,
+  },
+  {
+    id: 'sub-accounts',
+    title: 'Sub Accounts',
+    route: '/wallet/sub-accounts',
+    icon: Users,
+    category: 'wallet',
+    component: SubAccountManager,
+    priority: 7,
   },
 
   // Configuration
